@@ -239,7 +239,7 @@ VOID Fini(INT32 code, VOID *v)
     }
     OutFile << "tot: " << instot << endl;
     for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-    	OutFile << it->first << 
+    	OutFile << "有效位数: " << it->first << 
     	", " << it->second <<
     	", " << it->second / (0.01*instot) << "%" << endl;
     }
