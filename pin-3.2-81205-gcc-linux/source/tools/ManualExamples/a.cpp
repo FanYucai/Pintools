@@ -216,10 +216,13 @@ VOID Fini(INT32 code, VOID *v)
     // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
     
+    OutFile << endl;
+    OutFile << "______________" << " 指令统计：" << "______________" << endl;
 	instot = 0;
     for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
     	instot += it->second;
     }
+
     OutFile << "tot: " << instot << endl;
     for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
     	OutFile << it->first << 
@@ -227,18 +230,22 @@ VOID Fini(INT32 code, VOID *v)
     	", " << it->second / (0.01*instot) << "%" << endl;
     }
 
+
+    OutFile << endl;
+    OutFile << "______________" << " 立即数统计：" << "______________" << endl;
     instot = 0;   	
     for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
     	instot += it->second;
     }
     OutFile << "tot: " << instot << endl;
     for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-    	OutFile << it->first << 
+    	OutFile << "有效位数: " << it->first << 
     	", " << it->second <<
     	", " << it->second / (0.01*instot) << "%" << endl;
     }
-    OutFile.close();
 
+    OutFile << endl;
+    OutFile << "______________" << " 寻址方式统计：" << "______________" << endl;
     instot = 0;
     for(std::map<UINT64, UINT64>::iterator it=AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
         instot += it->second;
