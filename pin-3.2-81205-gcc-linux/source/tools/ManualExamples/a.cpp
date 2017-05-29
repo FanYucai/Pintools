@@ -206,30 +206,18 @@ VOID Fini(INT32 code, VOID *v)
     // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
     
-	// //map operations
- //    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
- //    	instot += it->second;
- //    }
- //    OutFile << "tot: " << instot << endl;
- //    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
- //    	OutFile << "name: " << it->first << 
- //    	", count: " << it->second <<
- //    	", percent: " << it->second / (0.01*instot) << "%" << endl;
- //    }
+	instot = 0;
+    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
+    	instot += it->second;
+    }
+    OutFile << "tot: " << instot << endl;
+    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
+    	OutFile << "name: " << it->first << 
+    	", count: " << it->second <<
+    	", percent: " << it->second / (0.01*instot) << "%" << endl;
+    }
 
-
-   	//map operations
-    // for(std::map<string, UINT64>::iterator it=AddrMap.begin(); it != AddrMap.end(); ++it) {
-    // 	instot += it->second;
-    // }
-    // OutFile << "tot: " << instot << endl;
-    // for(std::map<string, UINT64>::iterator it=AddrMap.begin(); it != AddrMap.end(); ++it) {
-    // 	OutFile << "name: " << it->first << 
-    // 	", count: " << it->second <<
-    // 	", percent: " << it->second / (0.01*instot) << "%" << endl;
-    // }
-
-   	//map operations
+    // instot = 0;   	
     // for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
     // 	instot += it->second;
     // }
@@ -241,6 +229,7 @@ VOID Fini(INT32 code, VOID *v)
     // }
     // OutFile.close();
 
+    instot = 0;
     for(std::map<UINT64, UINT64>::iterator it=AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
         instot += it->second;
     }

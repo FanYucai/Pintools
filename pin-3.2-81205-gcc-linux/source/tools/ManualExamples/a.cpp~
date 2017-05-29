@@ -32,17 +32,6 @@ std::map<UINT64, UINT64> ImdtMap;
 std::map<UINT64, UINT64> AddrIntMap;
 std::map<UINT64, string> AddrNameMap;
 
-AddrNameMap[(UINT64)0] = "立即数寻址";
-AddrNameMap[(UINT64)1] = "寄存器寻址";
-AddrNameMap[(UINT64)2] = "直接寻址";
-AddrNameMap[(UINT64)8] = "寄存器间接寻址";
-AddrNameMap[(UINT64)10] = "寄存器相对寻址";
-AddrNameMap[(UINT64)12] = "基址变址寻址";
-AddrNameMap[(UINT64)14] = "相对基址变址寻址";
-AddrNameMap[(UINT64)7] = "比例变址寻址";
-AddrNameMap[(UINT64)13] = "基址比例变址寻址";
-AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
-
 static void OnInstruction(ADDRINT unsigned_value, long signed_value, bool is_signed, INT32 length_bits)
 {
     OutFile << "Contains an immediate value: " << "0x" << hex << setfill('0') << setw(length_bits/4)
@@ -75,6 +64,16 @@ VOID GetOperLenAndSigned(INS ins, INT32 i, INT32& length_bits, bool& is_signed)
 // Pin calls this function every time a new instruction is encountered
 VOID Instruction(INS ins, VOID *v)
 {	
+AddrNameMap[(UINT64)0] = "立即数寻址";
+AddrNameMap[(UINT64)1] = "寄存器寻址";
+AddrNameMap[(UINT64)2] = "直接寻址";
+AddrNameMap[(UINT64)8] = "寄存器间接寻址";
+AddrNameMap[(UINT64)10] = "寄存器相对寻址";
+AddrNameMap[(UINT64)12] = "基址变址寻址";
+AddrNameMap[(UINT64)14] = "相对基址变址寻址";
+AddrNameMap[(UINT64)7] = "比例变址寻址";
+AddrNameMap[(UINT64)13] = "基址比例变址寻址";
+AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
 	// instructions
     insStr = INS_Mnemonic(ins);
     if(InsMap.count(insStr)>0) {
