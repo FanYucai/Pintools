@@ -51,6 +51,7 @@ static void OnInstruction(ADDRINT unsigned_value, long signed_value, bool is_sig
     {
         OutFile << " (signed: " << signed_value << "),";
     }
+    OutFile << " bitcount: " << bitcount << endl;
     OutFile << " operand is " << length_bits << " bits long." << endl;
 }
 
@@ -85,14 +86,16 @@ AddrNameMap[(UINT64)14] = "相对基址变址寻址";
 AddrNameMap[(UINT64)7] = "比例变址寻址";
 AddrNameMap[(UINT64)13] = "基址比例变址寻址";
 AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
-	// instructions
+	
+
+    // instructions
     insStr = INS_Mnemonic(ins);
     if(InsMap.count(insStr)>0) {
     	InsMap[insStr]++;
     } else {
     	InsMap[insStr] = 1;
     }
-    OutFile << insStr << " ";
+    // OutFile << insStr << " ";
     
 
     // addr
@@ -112,7 +115,6 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
     UINT32 MemFLag = 0;
     UINT32 RegFlag = 0;
     
-    OutFile << "-------------------" << endl;
     UINT32 n = INS_OperandCount(ins);
     for(UINT32 i=0; i<n; i++) {
         UINT64 BIDS = 0;
@@ -125,7 +127,7 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
             bool is_signed = false;
             GetOperLenAndSigned(ins, i, length_bits, is_signed);
             OnInstruction(value, signed_value, is_signed, length_bits);
-    		OutFile << "imm" << ", ";
+    		// OutFile << "imm" << ", ";
             ImmFlag = 1;
     	}
     	if(INS_OperandIsReg(ins, i)) {
@@ -172,9 +174,9 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
                 }               
             }
         }
-    	if(INS_OperandIsImplicit(ins, i)) {
-            OutFile << "imp" << ", ";
-        }	
+    	// if(INS_OperandIsImplicit(ins, i)) {
+     //        OutFile << "imp" << ", ";
+     //    }	
 
     }
     

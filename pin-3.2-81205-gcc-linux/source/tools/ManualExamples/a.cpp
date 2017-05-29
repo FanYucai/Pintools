@@ -86,14 +86,16 @@ AddrNameMap[(UINT64)14] = "相对基址变址寻址";
 AddrNameMap[(UINT64)7] = "比例变址寻址";
 AddrNameMap[(UINT64)13] = "基址比例变址寻址";
 AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
-	// instructions
+	
+
+    // instructions
     insStr = INS_Mnemonic(ins);
     if(InsMap.count(insStr)>0) {
     	InsMap[insStr]++;
     } else {
     	InsMap[insStr] = 1;
     }
-    OutFile << insStr << " ";
+    // OutFile << insStr << " ";
     
 
     // addr
@@ -125,7 +127,7 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
             bool is_signed = false;
             GetOperLenAndSigned(ins, i, length_bits, is_signed);
             OnInstruction(value, signed_value, is_signed, length_bits);
-    		OutFile << "imm" << ", ";
+    		// OutFile << "imm" << ", ";
             ImmFlag = 1;
     	}
     	if(INS_OperandIsReg(ins, i)) {
@@ -191,9 +193,6 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
             AddrIntMap[(UINT64)1] = 1;
         }
     }
-
-    OutFile << endl;
-
 
     if(ImdtMap.count(imdtBit)>0) {
     	ImdtMap[imdtBit]++;
