@@ -36,10 +36,22 @@ static void OnInstruction(ADDRINT unsigned_value, long signed_value, bool is_sig
 {
     OutFile << "Contains an immediate value: " << "0x" << hex << setfill('0') << setw(length_bits/4)
              << unsigned_value << setfill(' ') << setw(1) << dec;
+    UINT32 bitcount = 0;
+    while(unsigned_value != 0) {
+        unsigned_value = unsigned_value >> 1;
+        bitcount++;
+    }
+    if(ImdtMap.count(bitcount)>0) {
+        ImdtMap[bitcount]++;
+    } else {
+        ImdtMap[bitcount] = 1;
+    }     
+
     if (is_signed)
     {
         OutFile << " (signed: " << signed_value << "),";
     }
+    OutFile << " bitcount: " << bitcount << endl;
     OutFile << " operand is " << length_bits << " bits long." << endl;
 }
 
@@ -101,7 +113,6 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
     UINT32 MemFLag = 0;
     UINT32 RegFlag = 0;
     
-    OutFile << "-------------------" << endl;
     UINT32 n = INS_OperandCount(ins);
     for(UINT32 i=0; i<n; i++) {
         UINT64 BIDS = 0;
@@ -119,39 +130,39 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
     	}
     	if(INS_OperandIsReg(ins, i)) {
             RegFlag = 1;
-            OutFile << "reg" << ", ";
+            // OutFile << "reg" << ", ";
         }
     	if(INS_OperandIsMemory(ins, i)) {
             MemFLag = 1;
-            OutFile << "mem" << ", ";
-            OutFile << "BIDS: ";
+            // OutFile << "mem" << ", ";
+            // OutFile << "BIDS: ";
             if(INS_OperandMemoryBaseReg(ins, i) != REG_INVALID()) {
-                OutFile << "1";
+                // OutFile << "1";
                 BIDS += 8;
             } else {
-                OutFile << "0";
+                // OutFile << "0";
             }
             if(INS_OperandMemoryIndexReg(ins, i) != REG_INVALID()) {
-                OutFile << "1";
+                // OutFile << "1";
                 BIDS += 4;
             } else {
-                OutFile << "0";
+                // OutFile << "0";
             }
             if(INS_OperandMemoryDisplacement(ins, i) != (UINT32)0) {
-                OutFile << "1";
+                // OutFile << "1";
                 BIDS += 2;
             } else {
-                OutFile << "0";
+                // OutFile << "0";
             }
             if(INS_OperandMemoryScale(ins, i) != (UINT32)1) {
-                OutFile << "1";
+                // OutFile << "1";
                 BIDS += 1;
             } else {
-                OutFile << "0";
+                // OutFile << "0";
             }
             // OutFile << INS_OperandMemoryDisplacement(ins, i) << "|";
             // OutFile << INS_OperandMemoryScale(ins, i) << "|, ";    
-            OutFile << ", ";
+            // OutFile << ", ";
             
             if(BIDS != 0) {
                 if(AddrIntMap.count(BIDS)>0) {
@@ -161,9 +172,9 @@ AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
                 }               
             }
         }
-    	if(INS_OperandIsImplicit(ins, i)) {
-            OutFile << "imp" << ", ";
-        }	
+    	// if(INS_OperandIsImplicit(ins, i)) {
+     //        OutFile << "imp" << ", ";
+     //    }	
 
     }
     
@@ -212,22 +223,22 @@ VOID Fini(INT32 code, VOID *v)
     }
     OutFile << "tot: " << instot << endl;
     for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
-    	OutFile << "name: " << it->first << 
-    	", count: " << it->second <<
-    	", percent: " << it->second / (0.01*instot) << "%" << endl;
+    	OutFile << it->first << 
+    	", " << it->second <<
+    	", " << it->second / (0.01*instot) << "%" << endl;
     }
 
-    // instot = 0;   	
-    // for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-    // 	instot += it->second;
-    // }
-    // OutFile << "tot: " << instot << endl;
-    // for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-    // 	OutFile << "name: " << it->first << 
-    // 	", count: " << it->second <<
-    // 	", percent: " << it->second / (0.01*instot) << "%" << endl;
-    // }
-    // OutFile.close();
+    instot = 0;   	
+    for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
+    	instot += it->second;
+    }
+    OutFile << "tot: " << instot << endl;
+    for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
+    	OutFile << it->first << 
+    	", " << it->second <<
+    	", " << it->second / (0.01*instot) << "%" << endl;
+    }
+    OutFile.close();
 
     instot = 0;
     for(std::map<UINT64, UINT64>::iterator it=AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
