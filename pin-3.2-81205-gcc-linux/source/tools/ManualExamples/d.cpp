@@ -1,13 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <string.h>
-#include <set>
-#include <map>
-#include <vector>
-#include <cassert>
-#include <iostream>
-#include <fstream>
 #include <cstring>
 #include <string.h>
 #include <set>
@@ -32,7 +22,7 @@ typedef struct distCount
 
 ofstream OutFile;
 map<UINT64, UINT64> finalCount;
-map<REG, vector<UINT64> > distMap;
+map<REG, UINT64> distMap;
 vector<UINT64> hh;
 vector<REG> regW;
 vector<REG> regR;
@@ -42,13 +32,11 @@ VOID docount(vector<REG>* regR_ptr)
     regR = *regR_ptr;
     for(vector<REG>::iterator it=regR.begin(); it != regR.end(); ++it) {
         if(distMap.count((*it)) > 0) {
-            for(vector<UINT64>::iterator it2=distMap[*it].begin(); it2!=distMap[*it].end(); ++it2) {
-                UINT32 step = *it2;
-                if(finalCount.count(step) > 0) {
-                    finalCount[step]++;
-                } else {
-                    finalCount[step] = 1;
-                }
+            UINT32 step = distMap[*it];
+            if(finalCount.count(step) > 0) {
+                finalCount[step]++;
+            } else {
+                finalCount[step] = 1;
             }
         }
     }   
@@ -58,31 +46,17 @@ VOID fillReg(vector<REG>* regW_ptr)
 {
     regW = *regW_ptr;
     for(vector<REG>::iterator it=regW.begin(); it != regW.end(); ++it) {
-        if(distMap.count(*it) > 0) {
-            distMap[*it].push_back(0);
-        } else {
-            // distMap[*it] = hh;
-            // distMap[*it].push_back(0);
-        }
+        distMap[*it] = 0;
     }
 }
 
 VOID autoAdd()
 {
-    for(map<REG, vector<UINT64> >::iterator it=distMap.begin(); it!=distMap.end(); ++it) {
-        for(vector<UINT64>::iterator it2=it->second.begin(); it2!=it->second.end(); ++it2) {
-            (*it2) = (*it2) + 1;
-            if(*it2 > 30) {
-                it->second.erase(it2);
-            }
-        }
-        if((it->second).empty()) {
-            distMap.erase(it);
-        }
+    for(map<REG, UINT64>::iterator it=distMap.begin(); it!=distMap.end(); ++it) {
+        it->second += 1;
     }
     // 每执行一个指令距离加一
 }
-
 
 VOID Instruction(INS ins, VOID *v)
 {   
@@ -95,19 +69,19 @@ VOID Instruction(INS ins, VOID *v)
     UINT32 n = INS_OperandCount(ins);
     
     for(UINT32 i=0; i<n; i++) {
-        if(INS_OperandIsReg(ins, i) && INS_OperandWritten(ins, i)) {
+        if(INS_OperandIsReg(ins, i) && INS_OperandRead(ins, i)){
+            REG _reg;
+            _reg = INS_OperandReg(ins, i);
+            distc->_RregVec.push_back(_reg);
+        } else if(INS_OperandIsReg(ins, i) && INS_OperandWritten(ins, i)) {
             // 获取reg名
             REG _reg;
             _reg = INS_OperandReg(ins, i);
             distc->_WregVec.push_back(_reg);
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)fillReg, IARG_PTR, &(distc->_WregVec), IARG_END);
-        } else if(INS_OperandIsReg(ins, i) && INS_OperandRead(ins, i)){
-            REG _reg;
-            _reg = INS_OperandReg(ins, i);
-            distc->_RregVec.push_back(_reg);
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(distc->_RregVec), IARG_END);
         }
     } 
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(distc->_RregVec), IARG_END);
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)fillReg, IARG_PTR, &(distc->_WregVec), IARG_END);
 }
 
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
@@ -131,6 +105,7 @@ VOID Fini(INT32 code, VOID *v)
         OutFile << it->first << 
         ", " << it->second <<
         ", " << it->second / (0.01*instot) << "%" << endl;
+        if(it->first >= 30) break;
     }
 
     OutFile.close();

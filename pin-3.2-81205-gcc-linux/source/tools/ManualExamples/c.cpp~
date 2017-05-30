@@ -23,223 +23,116 @@ extern "C" {
     #include "xed-interface.h"
 }
 
-typedef struct InsCount
+typedef struct distCount
 {
-    string _insName;
-    UINT64 _bitcount;
-
-    UINT64 _BIDS;
-
-    struct InsCount * _next;
-} INS_COUNT;
+    vector<REG> _RregVec;
+    vector<REG> _WregVec;
+    struct distCount * _next;
+} DIST_COUNT;
 
 ofstream OutFile;
+map<UINT64, UINT64> finalCount;
+map<REG, vector<UINT64> > distMap;
+vector<UINT64> hh;
+vector<REG> regW;
+vector<REG> regR;
 
-// The running count of instructions is kept here
-// make it static to help the compiler optimize docount
-    // imdt figure:
-
-static UINT64 instot = 0;
-static string addrClass = "";
-
-std::map<string, UINT64> InsMap;
-std::map<string, UINT64> AddrMap;
-std::map<UINT64, UINT64> ImdtMap;
-std::map<UINT64, UINT64> AddrIntMap;
-std::map<UINT64, string> AddrNameMap;
-
-VOID insname_docount(string* insStr_ptr)
+VOID docount(vector<REG>* regR_ptr)
 {
-    string insStr = *insStr_ptr;
-    if(InsMap.count(insStr)>0) {
-        InsMap[insStr]++;
-    } else {
-        InsMap[insStr] = 1;
-    }  
-}
-
-VOID immaddr_docount() 
-{
-    if(AddrIntMap.count((UINT64)0)>0) {
-        AddrIntMap[(UINT64)0]++;
-    } else {
-        AddrIntMap[(UINT64)0] = 1;
-    }    
-}
-
-VOID regaddr_docount() 
-{
-    if(AddrIntMap.count((UINT64)1)>0) {
-        AddrIntMap[(UINT64)1]++;
-    } else {
-        AddrIntMap[(UINT64)1] = 1;
-    }    
-}
-
-VOID addr_docount(UINT64 * BIDS_ptr)
-{
-    UINT64 BIDS = *BIDS_ptr;
-    if(BIDS != 0) {
-        if(AddrIntMap.count(BIDS)>0) {
-            AddrIntMap[BIDS]++;
-        } else {
-            AddrIntMap[BIDS] = 1;
-        }               
-    }
-}
-
-VOID imm_docount(UINT32 *bitcount_ptr)
-{
-    UINT32 bitcount = *bitcount_ptr;
-    if(ImdtMap.count(bitcount)>0) {
-        ImdtMap[bitcount]++;
-    } else {
-        ImdtMap[bitcount] = 1;
+    regR = *regR_ptr;
+    for(vector<REG>::iterator it=regR.begin(); it != regR.end(); ++it) {
+        if(distMap.count((*it)) > 0) {
+            for(vector<UINT64>::iterator it2=distMap[*it].begin(); it2!=distMap[*it].end(); ++it2) {
+                UINT32 step = *it2;
+                if(finalCount.count(step) > 0) {
+                    finalCount[step]++;
+                } else {
+                    finalCount[step] = 1;
+                }
+            }
+        }
     }   
 }
 
-static UINT32 OnInstruction(ADDRINT unsigned_value, long signed_value, bool is_signed, INT32 length_bits)
+VOID fillReg(vector<REG>* regW_ptr)
 {
-    // OutFile << "Contains an immediate value: " << "0x" << hex << setfill('0') << setw(length_bits/4)
-    //          << unsigned_value << setfill(' ') << setw(1) << dec;
-    UINT32 bitcount = 0;
-    while(unsigned_value != 0) {
-        unsigned_value = unsigned_value >> 1;
-        bitcount++;
-    }  
-
-    // if (is_signed)
-    // {
-    //     OutFile << " (signed: " << signed_value << "),";
-    // }
-    // OutFile << " bitcount: " << bitcount << endl;
-    // OutFile << " operand is " << length_bits << " bits long." << endl;
-    return bitcount;
-}
-
-VOID GetOperLenAndSigned(INS ins, INT32 i, INT32& length_bits, bool& is_signed)
-{
-    xed_decoded_inst_t* xedd = INS_XedDec(ins);
-    length_bits = 8*xed_decoded_inst_operand_length(xedd, i);
-    is_signed = xed_decoded_inst_get_immediate_is_signed(xedd);
-}
-
-VOID Instruction(INS ins, VOID *v)
-{   
-    INS_COUNT *insc = new INS_COUNT;
-    insc->_insName = INS_Mnemonic(ins);
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)insname_docount, IARG_PTR, &(insc->_insName), IARG_END);
-
-    UINT32 n = INS_OperandCount(ins);
-
-    for(UINT32 i=0; i<n; i++) {
-        if(INS_OperandIsImmediate(ins, i)) {
-            if(INS_OperandRead(ins, i)) {
-                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)immaddr_docount, IARG_END);
-            }
-        }
-        if(INS_OperandIsReg(ins, i)) {
-            if(INS_OperandRead(ins, i)) {
-                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)regaddr_docount, IARG_END);
-            }
-        }
-    } 
-
-    for(UINT32 i=0; i<n; i++) {
-        UINT64 BIDS = 0;
-        UINT32 bitcount = 0;
-        if(INS_OperandIsImmediate(ins, i)) {
-            // Get the value itself
-            ADDRINT value = INS_OperandImmediate(ins, i);
-            long signed_value = (long)value;
-            // Get length information
-            INT32 length_bits = -1;
-            bool is_signed = false;
-            GetOperLenAndSigned(ins, i, length_bits, is_signed);
-            bitcount = OnInstruction(value, signed_value, is_signed, length_bits);
-            insc->_bitcount = bitcount;
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)imm_docount, IARG_PTR, &(insc->_bitcount), IARG_END);
-        }
-        if(INS_OperandIsMemory(ins, i)) {
-            if(INS_OperandMemoryBaseReg(ins, i) != REG_INVALID()) {
-                BIDS += 8;
-            } 
-            if(INS_OperandMemoryIndexReg(ins, i) != REG_INVALID()) {
-                BIDS += 4;
-            }
-            if(INS_OperandMemoryDisplacement(ins, i) != (UINT32)0) {
-                BIDS += 2;
-            } 
-            if(INS_OperandMemoryScale(ins, i) != (UINT32)1) {
-                BIDS += 1;
-            } 
-            insc->_BIDS = BIDS;
-            if(INS_OperandRead(ins, i)) {
-                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)addr_docount, IARG_PTR, &(insc->_BIDS), IARG_END);
-            }
+    regW = *regW_ptr;
+    for(vector<REG>::iterator it=regW.begin(); it != regW.end(); ++it) {
+        if(distMap.count(*it) > 0) {
+            distMap[*it].push_back(0);
+        } else {
+            distMap[*it] = vector<UINT64>;
+            distMap[*it].push_back(0);
         }
     }
 }
 
+VOID autoAdd()
+{
+    // for(map<REG, vector<UINT64> >::iterator it=distMap.begin(); it!=distMap.end(); ++it) {
+    //     for(vector<UINT64>::iterator it2=it->second.begin(); it2!=it->second.end(); ++it2) {
+    //         (*it2) = (*it2) + 1;
+    //         if(*it2 > 30) {
+    //             it->second.erase(it2);
+    //         }
+    //     }
+    //     if((it->second).empty()) {
+    //         distMap.erase(it);
+    //     }
+    // }
+    // 每执行一个指令距离加一
+}
+
+
+VOID Instruction(INS ins, VOID *v)
+{   
+    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)autoAdd, IARG_END);
+    DIST_COUNT *distc = new DIST_COUNT;
+    vector<REG> vec1;
+    vector<REG> vec2;
+    distc->_RregVec = vec1;
+    distc->_WregVec = vec2;
+    UINT32 n = INS_OperandCount(ins);
+    
+    for(UINT32 i=0; i<n; i++) {
+        if(INS_OperandIsReg(ins, i) && INS_OperandWritten(ins, i)) {
+            // 获取reg名
+            REG _reg;
+            _reg = INS_OperandReg(ins, i);
+            distc->_WregVec.push_back(_reg);
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)fillReg, IARG_PTR, &(distc->_WregVec), IARG_END);
+        } else if(INS_OperandIsReg(ins, i) && INS_OperandRead(ins, i)){
+            REG _reg;
+            _reg = INS_OperandReg(ins, i);
+            distc->_RregVec.push_back(_reg);
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_PTR, &(distc->_RregVec), IARG_END);
+        }
+    } 
+}
+
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
-    "o", "c.out", "specify output file name");
+    "o", "d.out", "specify output file name");
 
 // This function is called when the application exits
 VOID Fini(INT32 code, VOID *v)
 {
-    AddrNameMap[(UINT64)0] = "立即数寻址";
-    AddrNameMap[(UINT64)1] = "寄存器寻址";
-    AddrNameMap[(UINT64)2] = "直接寻址";
-    AddrNameMap[(UINT64)8] = "寄存器间接寻址";
-    AddrNameMap[(UINT64)10] = "寄存器相对寻址";
-    AddrNameMap[(UINT64)12] = "基址变址寻址";
-    AddrNameMap[(UINT64)14] = "相对基址变址寻址";
-    AddrNameMap[(UINT64)7] = "比例变址寻址";
-    AddrNameMap[(UINT64)13] = "基址比例变址寻址";
-    AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
-
     // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
-    
+    UINT64 instot = 0;
     OutFile << endl;
-    OutFile << "______________" << " 指令统计：" << "______________" << endl;
+    OutFile << "______________" << " 依赖距离统计：" << "______________" << endl;
     instot = 0;
-    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
+    for(std::map<UINT64, UINT64>::iterator it=finalCount.begin(); it != finalCount.end(); ++it) {
         instot += it->second;
     }
 
     OutFile << "tot: " << instot << endl;
-    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
+    for(std::map<UINT64, UINT64>::iterator it=finalCount.begin(); it != finalCount.end(); ++it) {
         OutFile << it->first << 
         ", " << it->second <<
         ", " << it->second / (0.01*instot) << "%" << endl;
     }
 
-    OutFile << endl;
-    OutFile << "______________" << " 立即数统计：" << "______________" << endl;
-    instot = 0;     
-    for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-        instot += it->second;
-    }
-    OutFile << "tot: " << instot << endl;
-    for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
-        OutFile << "有效位数: " << it->first << 
-        ", " << it->second <<
-        ", " << it->second / (0.01*instot) << "%" << endl;
-    }
-
-    OutFile << endl;
-    OutFile << "______________" << " 寻址方式统计：" << "______________" << endl;
-    instot = 0;
-    for(std::map<UINT64, UINT64>::iterator it=AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
-        instot += it->second;
-    }
-    OutFile << "tot: " << instot << endl;
-    for(std::map<UINT64, UINT64>::iterator it= AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
-        OutFile << "寻址方式：" << AddrNameMap[it->first] << 
-        ", 次数: " << it->second <<
-        ", 占比: " << it->second / (0.01*instot) << "%" << endl;
-    }
     OutFile.close();
 }
 
