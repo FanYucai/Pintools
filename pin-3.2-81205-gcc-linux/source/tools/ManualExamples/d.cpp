@@ -23,7 +23,6 @@ extern "C" {
     #include "xed-interface.h"
 }
 
-
 typedef struct distCount
 {
     vector<REG> _RregVec;
@@ -32,19 +31,18 @@ typedef struct distCount
 } DIST_COUNT;
 
 ofstream OutFile;
-
-static UINT64 instot = 0;
-static string addrClass = "";
-
 map<UINT64, UINT64> finalCount;
-map<REG, vector<UINT64>> distMap;
+map<REG, vector<UINT64> > distMap;
+vector<UINT64> hh;
+vector<REG> regW;
+vector<REG> regR;
 
 VOID docount(vector<REG>* regR_ptr)
 {
-    vector<REG> regR = *regR_ptr;
-    for(std::vector<REG>::iterator it=regR.begin(); it != regR.end(); ++it;) {
-        if(distMap.count(*it) > 0) {
-            for(vector<UINT64>::iterator it2=distMap[*it].begin(); it2!=distMap[*it].end(); ++it;) {
+    regR = *regR_ptr;
+    for(vector<REG>::iterator it=regR.begin(); it != regR.end(); ++it) {
+        if(distMap.count((*it)) > 0) {
+            for(vector<UINT64>::iterator it2=distMap[*it].begin(); it2!=distMap[*it].end(); ++it2) {
                 UINT32 step = *it2;
                 if(finalCount.count(step) > 0) {
                     finalCount[step]++;
@@ -58,22 +56,27 @@ VOID docount(vector<REG>* regR_ptr)
 
 VOID fillReg(vector<REG>* regW_ptr)
 {
-    vector<REG> regW = *regW_ptr;
-    for(std::vector<REG>::iterator it=regW.begin(); it != regW.end(); ++it;) {
-        distMap[it->first].push_back(0);
+    regW = *regW_ptr;
+    for(vector<REG>::iterator it=regW.begin(); it != regW.end(); ++it) {
+        if(distMap.count(*it) > 0) {
+            distMap[*it].push_back(0);
+        } else {
+            // distMap[*it] = hh;
+            // distMap[*it].push_back(0);
+        }
     }
 }
 
 VOID autoAdd()
 {
-    for(map<REG, vector<UINT64>>::iterator it=distMap.begin(); it!=distMap.end(); ++it) {
-        for(std::vector<UINT64>::iterator it2=it->second.begin(); it2!=it->second.end(); ++it2;) {
+    for(map<REG, vector<UINT64> >::iterator it=distMap.begin(); it!=distMap.end(); ++it) {
+        for(vector<UINT64>::iterator it2=it->second.begin(); it2!=it->second.end(); ++it2) {
             (*it2) = (*it2) + 1;
             if(*it2 > 30) {
                 it->second.erase(it2);
             }
         }
-        if(it->second.empty()) {
+        if((it->second).empty()) {
             distMap.erase(it);
         }
     }
@@ -115,7 +118,7 @@ VOID Fini(INT32 code, VOID *v)
 {
     // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
-    
+    UINT64 instot = 0;
     OutFile << endl;
     OutFile << "______________" << " 依赖距离统计：" << "______________" << endl;
     instot = 0;
