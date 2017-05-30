@@ -29,9 +29,6 @@ typedef struct InsCount
     UINT64 _bitcount;
 
     UINT64 _BIDS;
-    UINT64 _ImmFlag;
-    UINT64 _MemFlag;
-    UINT64 _RegFlag;
 
     struct InsCount * _next;
 } INS_COUNT;
@@ -134,19 +131,17 @@ VOID Instruction(INS ins, VOID *v)
     INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)insname_docount, IARG_PTR, &(insc->_insName), IARG_END);
 
     UINT32 n = INS_OperandCount(ins);
-    UINT32 ImmFlag = 0;
-    UINT32 MemFlag = 0;
-    UINT32 RegFlag = 0;
 
     for(UINT32 i=0; i<n; i++) {
         if(INS_OperandIsImmediate(ins, i)) {
-            ImmFlag = 1;
+            if(INS_OperandRead(ins, i)) {
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)immaddr_docount, IARG_END);
+            }
         }
         if(INS_OperandIsReg(ins, i)) {
-            RegFlag = 1;
-        }
-        if(INS_OperandIsMemory(ins, i)) {
-            MemFlag = 1;
+            if(INS_OperandRead(ins, i)) {
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)regaddr_docount, IARG_END);
+            }
         }
     } 
 
@@ -179,17 +174,11 @@ VOID Instruction(INS ins, VOID *v)
                 BIDS += 1;
             } 
             insc->_BIDS = BIDS;
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)addr_docount, IARG_PTR, &(insc->_BIDS), IARG_END);
+            if(INS_OperandRead(ins, i)) {
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)addr_docount, IARG_PTR, &(insc->_BIDS), IARG_END);
+            }
         }
     }
-    
-    if(ImmFlag == 1) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)immaddr_docount, IARG_END);
-    } 
-    else if(RegFlag == 1 && MemFlag == 0) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)regaddr_docount, IARG_END);
-    }
- 
 }
 
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
