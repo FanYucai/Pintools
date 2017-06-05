@@ -1,13 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <string.h>
-#include <set>
-#include <map>
-#include <vector>
-#include <cassert>
-#include <iostream>
-#include <fstream>
 #include <cstring>
 #include <string.h>
 #include <set>
@@ -16,12 +6,15 @@
 #include <cassert>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <fstream>
 #include "pin.H"
 
 extern "C" {
     #include "xed-interface.h"
 }
+
+typedef pair<string, int> PAIR;  
 
 typedef struct InsCount
 {
@@ -33,6 +26,12 @@ typedef struct InsCount
     struct InsCount * _next;
 } INS_COUNT;
 
+struct CmpByValue {  
+  bool operator()(const PAIR& lhs, const PAIR& rhs) {  
+    return lhs.second > rhs.second;  
+  }  
+};  
+
 ofstream OutFile;
 
 // The running count of instructions is kept here
@@ -43,7 +42,6 @@ static UINT64 instot = 0;
 static string addrClass = "";
 
 std::map<string, UINT64> InsMap;
-std::map<string, UINT64> AddrMap;
 std::map<UINT64, UINT64> ImdtMap;
 std::map<UINT64, UINT64> AddrIntMap;
 std::map<UINT64, string> AddrNameMap;
@@ -160,7 +158,7 @@ VOID Instruction(INS ins, VOID *v)
             if(INS_OperandMemoryIndexReg(ins, i) != REG_INVALID()) {
                 BIDS += 4;
             }
-            if(INS_OperandMemoryDisplacement(ins, i) != (UINT32)0) {
+            if(INS_OperandMemoryDisplacement(ins, i) != 0) {
                 BIDS += 2;
             } 
             if(INS_OperandMemoryScale(ins, i) != (UINT32)1) {
@@ -183,11 +181,11 @@ VOID Fini(INT32 code, VOID *v)
     AddrNameMap[(UINT64)0] = "立即数寻址";
     AddrNameMap[(UINT64)1] = "寄存器寻址";
     AddrNameMap[(UINT64)2] = "直接寻址";
+    AddrNameMap[(UINT64)7] = "比例变址寻址";
     AddrNameMap[(UINT64)8] = "寄存器间接寻址";
     AddrNameMap[(UINT64)10] = "寄存器相对寻址";
     AddrNameMap[(UINT64)12] = "基址变址寻址";
     AddrNameMap[(UINT64)14] = "相对基址变址寻址";
-    AddrNameMap[(UINT64)7] = "比例变址寻址";
     AddrNameMap[(UINT64)13] = "基址比例变址寻址";
     AddrNameMap[(UINT64)15] = "相对基址比例变址寻址";
 
@@ -200,13 +198,17 @@ VOID Fini(INT32 code, VOID *v)
     for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
         instot += it->second;
     }
-
-    OutFile << "tot: " << instot << endl;
-    for(std::map<string, UINT64>::iterator it=InsMap.begin(); it != InsMap.end(); ++it) {
-        OutFile << it->first << 
-        ", " << it->second <<
-        ", " << it->second / (0.01*instot) << "%" << endl;
-    }
+    OutFile << "指令总数: " << instot << endl;
+    //根据value排序
+    vector<PAIR> InsMap_vec(InsMap.begin(), InsMap.end());  
+    sort(InsMap_vec.begin(), InsMap_vec.end(), CmpByValue());  
+    for (int i = 0; i != 10; ++i) {  
+        OutFile << "指令名称: "
+        << InsMap_vec[i].first << ", 次数: "
+        << InsMap_vec[i].second << ", 百分比: "
+        << InsMap_vec[i].second/(0.01*instot) << "%"
+        << endl;  
+    }  
 
     OutFile << endl;
     OutFile << "______________" << " 立即数统计：" << "______________" << endl;
@@ -214,7 +216,7 @@ VOID Fini(INT32 code, VOID *v)
     for(std::map<UINT64, UINT64>::iterator it=ImdtMap.begin(); it != ImdtMap.end(); ++it) {
         instot += it->second;
     }
-    OutFile << "tot: " << instot << endl;
+    OutFile << "立即数出现总次数: " << instot << endl;
     for(std::map<UINT64, UINT64>::iterator it= ImdtMap.begin(); it != ImdtMap.end(); ++it) {
         OutFile << "有效位数: " << it->first << 
         ", " << it->second <<
@@ -227,7 +229,8 @@ VOID Fini(INT32 code, VOID *v)
     for(std::map<UINT64, UINT64>::iterator it=AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
         instot += it->second;
     }
-    OutFile << "tot: " << instot << endl;
+    OutFile << "总计: " << instot << endl;
+
     for(std::map<UINT64, UINT64>::iterator it= AddrIntMap.begin(); it != AddrIntMap.end(); ++it) {
         OutFile << "寻址方式：" << AddrNameMap[it->first] << 
         ", 次数: " << it->second <<
